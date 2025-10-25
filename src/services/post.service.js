@@ -3,20 +3,14 @@ import { pool } from '../config/db.js';
 import { ApiError } from '../utils/ApiError.js';
 
 // Create post (handles authorId foreign-key error)
-export const createPost = async ({ title, content, authorId }) => {
-  try {
-    const [result] = await pool.query(
-      `INSERT INTO posts (title, content, authorId) VALUES (?, ?, ?)`,
-      [title, content, authorId]
-    );
-    return await getPostById(result.insertId);
-  } catch (err) {
-    // MySQL error when foreign key references missing user
-    if (err && (err.code === 'ER_NO_REFERENCED_ROW_2' || err.code === 'ER_NO_REFERENCED_ROW')) {
-      throw new ApiError(400, 'Invalid author ID. User does not exist.');
-    }
-    throw err;
-  }
+export const createPost = async (postData, authorId) => {
+  const { title, content } = postData;
+  const [result] = await pool.query(
+    'INSERT INTO posts (title, content, authorId) VALUES (?, ?, ?)',
+    [title, content, authorId]
+  );
+  const [rows] = await pool.query('SELECT * FROM posts WHERE id = ?', [result.insertId]);
+  return rows[0];
 };
 
 // Challenge 3: get a single post with author data (JOIN)
