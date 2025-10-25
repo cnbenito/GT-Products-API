@@ -51,47 +51,38 @@ export const getAllPosts = async () => {
   return rows;
 };
 
-// Challenge 1: get all posts by authorId
-export const getPostsByAuthorId = async (authorId) => {
-  const [rows] = await pool.query(
-    `SELECT
-       p.id,
-       p.title,
-       p.content,
-       p.createdAt,
-       p.authorId,
-       u.username AS authorUsername,
-       u.email AS authorEmail
-     FROM posts p
-     JOIN users u ON p.authorId = u.id
-     WHERE p.authorId = ?
-     ORDER BY p.createdAt DESC`,
-    [authorId]
-  );
-  return rows;
-};
-
 // Update post
-export const updatePost = async (id, { title, content }) => {
-  const [result] = await pool.query(
-    `UPDATE posts SET title = ?, content = ? WHERE id = ?`,
-    [title, content, id]
-  );
+export const updatePost = async (id, postData, userId) => { // Add userId as an argument
+    const { title, content } = postData;
 
-  if (result.affectedRows === 0) {
-    throw new ApiError(404, "Post not found");
-  }
+    // First, get the post to check for ownership
+    const post = await getPostById(id); // This will throw a 404 if not found
 
-  return await getPostById(id);
+    // AUTHORIZATION CHECK
+    if (post.authorId !== userId) {
+        throw new ApiError(403, "Forbidden: You do not have permission to edit this post.");
+    }
+
+    // If the check passes, proceed with the update
+    await pool.query(
+        'UPDATE posts SET title = ?, content = ? WHERE id = ?',
+        [title, content, id]
+    );
+    const updatedPost = await getPostById(id);
+    return updatedPost;
 };
 
 // Delete post
-export const deletePost = async (id) => {
-  const [result] = await pool.query(`DELETE FROM posts WHERE id = ?`, [id]);
+export const deletePost = async (id, userId) => { // Add userId as an argument
+    // First, get the post to check for ownership
+    const post = await getPostById(id); // This will throw a 404 if not found
 
-  if (result.affectedRows === 0) {
-    throw new ApiError(404, "Post not found");
-  }
-
-  return { message: "Post deleted successfully" };
+    // AUTHORIZATION CHECK
+    if (post.authorId !== userId) {
+        throw new ApiError(403, "Forbidden: You do not have permission to delete this post.");
+    }
+    
+    // If the check passes, proceed with the deletion
+    const [result] = await pool.query('DELETE FROM posts WHERE id = ?', [id]);
+    return result.affectedRows;
 };

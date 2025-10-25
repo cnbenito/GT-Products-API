@@ -19,8 +19,8 @@ router.get('/:id', getPostByIdController);
 // Protected create route
 router.post('/', authMiddleware, validatePost, createPostController);
 
-// Update / Delete (protect if desired)
-router.put('/:id', authMiddleware, updatePost);
+// Update / Delete (protected)
+router.put('/:id', authMiddleware, validatePost, updatePost);
 router.delete('/:id', authMiddleware, deletePost);
 
 export default router;
